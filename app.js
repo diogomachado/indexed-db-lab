@@ -11,10 +11,23 @@ if (!window.indexedDB) {
 }
 
 // Dados para armazenar
-const employeeData = [
-    {id: "00-01", name: "gopal", age: 35, email: "gopal@tutorialspoint.com" },
-    {id: "00-02", name: "prasad", age: 32, email: "prasad@tutorialspoint.com" }
-];
+const estoque = [
+    {
+        id: "P001",
+        codigo_receita: "REC201234",
+        nome: "Pão de gergilim"
+    },
+    {
+        id: "P002",
+        codigo_receita: "REC101294",
+        nome: "Carne de hamburguer"
+    },
+    {
+        id: "P003",
+        codigo_receita: "REC301244",
+        nome: "Presunto"
+    }
+]
 
 var db;
 
@@ -36,25 +49,30 @@ request.onsuccess = function (event) {
 request.onupgradeneeded = function (event) {
 
     console.log("Implanta os dados");
-
+    
     var db = event.target.result;
-    var objectStore = db.createObjectStore("employee", {keyPath: "id" });
 
-    for (var i in employeeData) {
-        objectStore.add(employeeData[i]);
+    // keyPath diz ao indexedDB que ID será um campo único e de index
+    var objectStore = db.createObjectStore("hamburgueres", {keyPath: "id" });
+
+    // cria um index com codigo_receita, pois é um número que também queremos pesquisar, e ele é unico
+    objectStore.createIndex("codigo_receita", "codigo_receita", { unique: true });
+
+    for (var i in estoque) {
+        objectStore.add(estoque[i]);
     }
 }
 
-function read() {
+function lerItem() {
 
     // Para gravar o tempo de execução
     console.time("leitura");
 
     // Seta o objeto que quer manipular
-    var objectStore = db.transaction(["employee"]).objectStore("employee");
+    var objectStore = db.transaction(["hamburgueres"]).objectStore("hamburgueres");
 
     // Pesquisa pelo objeto "ID"
-    var request = objectStore.get("00-03");
+    var request = objectStore.get("P003");
 
     // Eventos que ocorrem em "request"
     request.onerror = function (event) {
@@ -70,7 +88,7 @@ function read() {
             console.timeEnd("leitura");
 
             // Imprime os dados encontrados
-            alert("Nome: " + request.result.name + ", Idade: " + request.result.age + ", E-mail: " + request.result.email);
+            alert("Nome: " + request.result.nome);
         }
 
         else {
@@ -79,17 +97,17 @@ function read() {
     };
 }
 
-function readAll() {
+function lerTodos() {
 
     // Seta o objeto que deseja manipular
-    var objectStore = db.transaction("employee").objectStore("employee");
+    var objectStore = db.transaction("hamburgueres").objectStore("hamburgueres");
 
     // Vai iterando os itens armazenados
     objectStore.openCursor().onsuccess = function (event) {
         var cursor = event.target.result;
 
         if (cursor) {
-            alert("Nome do id " + cursor.key + " é " + cursor.value.name + ", Idade: " + cursor.value.age + ", E-mail: " + cursor.value.email);
+            alert(cursor.key + ": " + cursor.value.nome);
             cursor.continue();
         }
         else {
@@ -98,13 +116,42 @@ function readAll() {
     };
 }
 
-function add() {
+function buscarCodigo(codigo){
 
-    var itemAdd = { id: "00-03", name: "Kenny", age: 19, email: "kenny@planet.org" };
+    console.time("Teste1");
+    console.profile("buscarCodigo()");
+
+    var transaction = db.transaction('hamburgueres', "readonly");
+    var store = transaction.objectStore('hamburgueres');
+    var index = store.index("codigo_receita");
+
+    //filtra os contatos que tenham o idade maior ou igual a 20 e menor ou igual a 25
+    var filtro = IDBKeyRange.only('REC101294');
+
+    var request = index.openCursor(filtro);
+    request.onsuccess = function (event) {
+        var cursor = event.target.result;
+        if (cursor) {
+            console.log(cursor.value);
+            console.timeEnd("Teste1");
+            console.profileEnd();
+            cursor.continue();
+
+        }
+    }
+}
+
+function adicionar() {
+
+    var itemAdd = {
+        id: "P004",
+        codigo_receita: "REC201339",
+        nome: "Pão integral de hamburguer"
+    };
 
     // Abre uma transação para adicionar
-    var request = db.transaction(["employee"], "readwrite")
-                    .objectStore("employee")
+    var request = db.transaction(["hamburgueres"], "readwrite")
+                    .objectStore("hamburgueres")
                     .add(itemAdd);
 
     // Eventos que ocorrem no "request"
@@ -117,12 +164,12 @@ function add() {
     }
 }
 
-function remove() {
+function remover() {
 
     // Abre uma transação de remoção
-    var request = db.transaction(["employee"], "readwrite")
-                    .objectStore("employee")
-                    .delete("00-03");
+    var request = db.transaction(["hamburgueres"], "readwrite")
+                    .objectStore("hamburgueres")
+                    .delete("P004");
 
     // Eventos que ocorrem em "request"
     request.onsuccess = function (event) {
